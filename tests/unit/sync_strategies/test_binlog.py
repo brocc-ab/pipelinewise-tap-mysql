@@ -9,6 +9,7 @@ from typing import Dict
 from unittest import TestCase
 from unittest.mock import patch, Mock, call, MagicMock
 
+import pymysql.err
 from pymysql import InternalError
 from pymysql.cursors import Cursor
 from pymysqlreplication.constants import FIELD_TYPE
@@ -63,9 +64,9 @@ class TestBinlogSyncStrategy(TestCase):
         self.assertListEqual(['x', binlog.SDC_DELETED_AT], columns)
 
     @patch('tap_mysql.sync_strategies.binlog.calculate_bookmark',
-           return_value=('binlog0001', 50))
+           return_value=('binlog.0001', 50))
     @patch('tap_mysql.sync_strategies.binlog.fetch_current_log_file_and_pos',
-           return_value=('binlog0003', 1000))
+           return_value=('binlog.0003', 1000))
     @patch('tap_mysql.sync_strategies.binlog.utils.now', return_value=datetime.datetime(2020, 10, 13, 8, 29, 58,
                                                                                         tzinfo=pytz.UTC))
     @patch('tap_mysql.sync_strategies.binlog.discover_catalog')
@@ -220,17 +221,17 @@ class TestBinlogSyncStrategy(TestCase):
                        autospec=True) as reader_mock:
                 def iter_mock(_):
                     log_files = [
-                        'binlog0001',
-                        'binlog0001',
-                        'binlog0002',
-                        'binlog0002',
-                        'binlog0002',
-                        'binlog0003',
-                        'binlog0003',
-                        'binlog0003',
-                        'binlog0003',
-                        'binlog0003',
-                        'binlog0003'
+                        'binlog.0001',
+                        'binlog.0001',
+                        'binlog.0002',
+                        'binlog.0002',
+                        'binlog.0002',
+                        'binlog.0003',
+                        'binlog.0003',
+                        'binlog.0003',
+                        'binlog.0003',
+                        'binlog.0003',
+                        'binlog.0003'
                     ]
 
                     log_positions = [
@@ -296,7 +297,7 @@ class TestBinlogSyncStrategy(TestCase):
                             ]
                         }),
                         get_binlogevent(RotateEvent, {
-                            'next_binlog': 'binlog0002',
+                            'next_binlog': 'binlog.0002',
                             'position': 4,
                         }),
                         get_binlogevent(UpdateRowsEvent, {
@@ -329,7 +330,7 @@ class TestBinlogSyncStrategy(TestCase):
                             'columns': []
                         }),
                         get_binlogevent(RotateEvent, {
-                            'next_binlog': 'binlog0003',
+                            'next_binlog': 'binlog.0003',
                             'position': 7,
                         }),
                         get_binlogevent(WriteRowsEvent, {
@@ -812,12 +813,12 @@ class TestBinlogSyncStrategy(TestCase):
                                          StateMessage(value={
                                              'bookmarks': {
                                                  'my_db-stream1': {
-                                                     'log_file': 'binlog0003',
+                                                     'log_file': 'binlog.0003',
                                                      'log_pos': 999,
                                                      'version': 1
                                                  },
                                                  'my_db-stream2': {
-                                                     'log_file': 'binlog0003',
+                                                     'log_file': 'binlog.0003',
                                                      'log_pos': 999,
                                                      'version': 1
                                                  },
@@ -834,7 +835,7 @@ class TestBinlogSyncStrategy(TestCase):
                         'server_id': 123,
                         'report_slave': socket.gethostname(),
                         'only_events': [WriteRowsEvent, UpdateRowsEvent, DeleteRowsEvent, RotateEvent],
-                        'log_file': 'binlog0001',
+                        'log_file': 'binlog.0001',
                         'log_pos': 50,
                         'resume_stream': True,
                     }
@@ -845,7 +846,7 @@ class TestBinlogSyncStrategy(TestCase):
     @patch('tap_mysql.sync_strategies.binlog.calculate_gtid_bookmark',
            return_value='0-123-555')
     @patch('tap_mysql.sync_strategies.binlog.fetch_current_log_file_and_pos',
-           return_value=('binlog0003', 1000))
+           return_value=('binlog.0003', 1000))
     @patch('tap_mysql.sync_strategies.binlog.utils.now', return_value=datetime.datetime(2020, 10, 13, 8, 29, 58,
                                                                                         tzinfo=pytz.UTC))
     @patch('tap_mysql.sync_strategies.binlog.discover_catalog')
@@ -1000,19 +1001,19 @@ class TestBinlogSyncStrategy(TestCase):
                        autospec=True) as reader_mock:
                 def iter_mock(_):
                     log_files = [
-                        'binlog0001',
-                        'binlog0001',
-                        'binlog0002',
-                        'binlog0002',
-                        'binlog0002',
-                        'binlog0002',
-                        'binlog0002',
-                        'binlog0003',
-                        'binlog0003',
-                        'binlog0003',
-                        'binlog0003',
-                        'binlog0003',
-                        'binlog0003'
+                        'binlog.0001',
+                        'binlog.0001',
+                        'binlog.0002',
+                        'binlog.0002',
+                        'binlog.0002',
+                        'binlog.0002',
+                        'binlog.0002',
+                        'binlog.0003',
+                        'binlog.0003',
+                        'binlog.0003',
+                        'binlog.0003',
+                        'binlog.0003',
+                        'binlog.0003'
                     ]
 
                     log_positions = [
@@ -1601,13 +1602,13 @@ class TestBinlogSyncStrategy(TestCase):
                                              'bookmarks': {
                                                  'my_db-stream1': {
                                                      'gtid': '0-123-558',
-                                                     'log_file': 'binlog0003',
+                                                     'log_file': 'binlog.0003',
                                                      'log_pos': 999,
                                                      'version': 1,
                                                  },
                                                  'my_db-stream2': {
                                                      'gtid': '0-123-558',
-                                                     'log_file': 'binlog0003',
+                                                     'log_file': 'binlog.0003',
                                                      'log_pos': 999,
                                                      'version': 1
                                                  },
@@ -1796,7 +1797,8 @@ class TestBinlogSyncStrategy(TestCase):
         )
 
     @patch('tap_mysql.sync_strategies.binlog.connect_with_backoff')
-    def test_fetch_current_log_file_and_pos_success(self, connect_with_backoff):
+    def test_fetch_current_log_file_and_pos_success_with_new_command(self, connect_with_backoff):
+        """SHOW BINARY LOG STATUS succeeds (MySQL 8.4+)"""
         mysql_con = MagicMock(spec_set=MySQLConnection).return_value
         cur_mock = MagicMock(spec_set=Cursor).return_value
         cur_mock.__enter__.return_value.fetchone.side_effect = [
@@ -1812,8 +1814,33 @@ class TestBinlogSyncStrategy(TestCase):
         self.assertEqual(result, ('binlog.000033', 345))
 
         connect_with_backoff.assert_called_with(mysql_con)
+        cur_mock.__enter__.return_value.execute.assert_called_once_with('SHOW BINARY LOG STATUS')
+
+    @patch('tap_mysql.sync_strategies.binlog.connect_with_backoff')
+    def test_fetch_current_log_file_and_pos_success_with_fallback(self, connect_with_backoff):
+        """SHOW BINARY LOG STATUS fails, falls back to SHOW MASTER STATUS (older MySQL/MariaDB)"""
+        mysql_con = MagicMock(spec_set=MySQLConnection).return_value
+        cur_mock = MagicMock(spec_set=Cursor).return_value
+        cur_mock.__enter__.return_value.execute.side_effect = [
+            pymysql.err.ProgrammingError(1064, "You have an error in your SQL syntax"),
+            None,
+        ]
+        cur_mock.__enter__.return_value.fetchone.side_effect = [
+            ['binlog.000033', 345, ''],
+        ]
+
+        mysql_con.__enter__.return_value.cursor.return_value = cur_mock
+
+        connect_with_backoff.return_value = mysql_con
+
+        result = binlog.fetch_current_log_file_and_pos(mysql_con)
+
+        self.assertEqual(result, ('binlog.000033', 345))
+
+        connect_with_backoff.assert_called_with(mysql_con)
         cur_mock.__enter__.return_value.execute.assert_has_calls(
             [
+                call('SHOW BINARY LOG STATUS'),
                 call('SHOW MASTER STATUS'),
             ]
         )
@@ -1834,13 +1861,6 @@ class TestBinlogSyncStrategy(TestCase):
             binlog.fetch_current_log_file_and_pos(mysql_con)
 
         self.assertEqual('MySQL binary logging is not enabled.', str(context.exception))
-
-        connect_with_backoff.assert_called_with(mysql_con)
-        cur_mock.__enter__.return_value.execute.assert_has_calls(
-            [
-                call('SHOW MASTER STATUS'),
-            ]
-        )
 
     @patch('tap_mysql.sync_strategies.binlog.connection.fetch_server_uuid')
     @patch('tap_mysql.sync_strategies.binlog.connect_with_backoff')

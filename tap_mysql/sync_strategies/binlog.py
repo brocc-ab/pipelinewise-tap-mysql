@@ -98,7 +98,12 @@ def verify_gtid_config(mysql_conn: MySQLConnection):
 def fetch_current_log_file_and_pos(mysql_conn):
     with connect_with_backoff(mysql_conn) as open_conn:
         with open_conn.cursor() as cur:
-            cur.execute("SHOW MASTER STATUS")
+            # SHOW MASTER STATUS was removed in MySQL 8.4 and replaced with SHOW BINARY LOG STATUS.
+            # Try the new command first, fall back to the old one for older MySQL/MariaDB versions.
+            try:
+                cur.execute("SHOW BINARY LOG STATUS")
+            except (pymysql.err.OperationalError, pymysql.err.ProgrammingError):
+                cur.execute("SHOW MASTER STATUS")
 
             result = cur.fetchone()
 

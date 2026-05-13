@@ -116,10 +116,11 @@ class TestTypeMapping(unittest.TestCase):
                                 inclusion='available',
                                 minimum=-128,
                                 maximum=127))
-        self.assertEqual(self.get_metadata_for_column('c_tinyint'),
-                         {'selected-by-default': True,
-                          'sql-datatype': 'tinyint(4)',
-                          'datatype': 'tinyint'})
+        md = self.get_metadata_for_column('c_tinyint')
+        self.assertTrue(md['selected-by-default'])
+        # MySQL 8.0+ drops display widths: 'tinyint(4)' becomes 'tinyint'
+        self.assertIn(md['sql-datatype'], ('tinyint(4)', 'tinyint'))
+        self.assertEqual(md['datatype'], 'tinyint')
 
     def test_tinyint_1(self):
         self.assertEqual(self.schema.properties['c_tinyint_1'],
@@ -131,13 +132,24 @@ class TestTypeMapping(unittest.TestCase):
                           'datatype': 'tinyint'})
 
     def test_tinyint_1_unsigned(self):
-        self.assertEqual(self.schema.properties['c_tinyint_1_unsigned'],
-                         Schema(['null', 'boolean'],
-                                inclusion='available'))
-        self.assertEqual(self.get_metadata_for_column('c_tinyint_1_unsigned'),
-                         {'selected-by-default': True,
-                          'sql-datatype': 'tinyint(1) unsigned',
-                          'datatype': 'tinyint'})
+        md = self.get_metadata_for_column('c_tinyint_1_unsigned')
+        # MySQL 8.0+ drops the (1) display width for unsigned tinyint, so it can no longer
+        # be distinguished from a regular tinyint unsigned and is mapped as integer instead of boolean.
+        if md['sql-datatype'] == 'tinyint(1) unsigned':
+            # MySQL 5.7 and earlier: detected as boolean
+            self.assertEqual(self.schema.properties['c_tinyint_1_unsigned'],
+                             Schema(['null', 'boolean'],
+                                    inclusion='available'))
+        else:
+            # MySQL 8.0+: detected as integer
+            self.assertEqual(md['sql-datatype'], 'tinyint unsigned')
+            self.assertEqual(self.schema.properties['c_tinyint_1_unsigned'],
+                             Schema(['null', 'integer'],
+                                    inclusion='available',
+                                    minimum=0,
+                                    maximum=255))
+        self.assertTrue(md['selected-by-default'])
+        self.assertEqual(md['datatype'], 'tinyint')
 
     def test_smallint(self):
         self.assertEqual(self.schema.properties['c_smallint'],
@@ -145,10 +157,10 @@ class TestTypeMapping(unittest.TestCase):
                                 inclusion='available',
                                 minimum=-32768,
                                 maximum=32767))
-        self.assertEqual(self.get_metadata_for_column('c_smallint'),
-                         {'selected-by-default': True,
-                          'sql-datatype': 'smallint(6)',
-                          'datatype': 'smallint'})
+        md = self.get_metadata_for_column('c_smallint')
+        self.assertTrue(md['selected-by-default'])
+        self.assertIn(md['sql-datatype'], ('smallint(6)', 'smallint'))
+        self.assertEqual(md['datatype'], 'smallint')
 
     def test_mediumint(self):
         self.assertEqual(self.schema.properties['c_mediumint'],
@@ -156,10 +168,10 @@ class TestTypeMapping(unittest.TestCase):
                                 inclusion='available',
                                 minimum=-8388608,
                                 maximum=8388607))
-        self.assertEqual(self.get_metadata_for_column('c_mediumint'),
-                         {'selected-by-default': True,
-                          'sql-datatype': 'mediumint(9)',
-                          'datatype': 'mediumint'})
+        md = self.get_metadata_for_column('c_mediumint')
+        self.assertTrue(md['selected-by-default'])
+        self.assertIn(md['sql-datatype'], ('mediumint(9)', 'mediumint'))
+        self.assertEqual(md['datatype'], 'mediumint')
 
     def test_int(self):
         self.assertEqual(self.schema.properties['c_int'],
@@ -167,10 +179,10 @@ class TestTypeMapping(unittest.TestCase):
                                 inclusion='available',
                                 minimum=-2147483648,
                                 maximum=2147483647))
-        self.assertEqual(self.get_metadata_for_column('c_int'),
-                         {'selected-by-default': True,
-                          'sql-datatype': 'int(11)',
-                          'datatype': 'int'})
+        md = self.get_metadata_for_column('c_int')
+        self.assertTrue(md['selected-by-default'])
+        self.assertIn(md['sql-datatype'], ('int(11)', 'int'))
+        self.assertEqual(md['datatype'], 'int')
 
     def test_bigint(self):
         self.assertEqual(self.schema.properties['c_bigint'],
@@ -178,10 +190,10 @@ class TestTypeMapping(unittest.TestCase):
                                 inclusion='available',
                                 minimum=-9223372036854775808,
                                 maximum=9223372036854775807))
-        self.assertEqual(self.get_metadata_for_column('c_bigint'),
-                         {'selected-by-default': True,
-                          'sql-datatype': 'bigint(20)',
-                          'datatype': 'bigint'})
+        md = self.get_metadata_for_column('c_bigint')
+        self.assertTrue(md['selected-by-default'])
+        self.assertIn(md['sql-datatype'], ('bigint(20)', 'bigint'))
+        self.assertEqual(md['datatype'], 'bigint')
 
     def test_bigint_unsigned(self):
         self.assertEqual(self.schema.properties['c_bigint_unsigned'],
@@ -190,10 +202,10 @@ class TestTypeMapping(unittest.TestCase):
                                 minimum=0,
                                 maximum=18446744073709551615))
 
-        self.assertEqual(self.get_metadata_for_column('c_bigint_unsigned'),
-                         {'selected-by-default': True,
-                          'sql-datatype': 'bigint(20) unsigned',
-                          'datatype': 'bigint'})
+        md = self.get_metadata_for_column('c_bigint_unsigned')
+        self.assertTrue(md['selected-by-default'])
+        self.assertIn(md['sql-datatype'], ('bigint(20) unsigned', 'bigint unsigned'))
+        self.assertEqual(md['datatype'], 'bigint')
 
     def test_float(self):
         self.assertEqual(self.schema.properties['c_float'],
@@ -245,10 +257,10 @@ class TestTypeMapping(unittest.TestCase):
     def test_year(self):
         self.assertEqual(self.schema.properties['c_year'].inclusion,
                          'unsupported')
-        self.assertEqual(self.get_metadata_for_column('c_year'),
-                         {'selected-by-default': False,
-                          'sql-datatype': 'year(4)',
-                          'datatype': 'year'})
+        md = self.get_metadata_for_column('c_year')
+        self.assertFalse(md['selected-by-default'])
+        self.assertIn(md['sql-datatype'], ('year(4)', 'year'))
+        self.assertEqual(md['datatype'], 'year')
 
     def test_pk(self):
         self.assertEqual(
@@ -330,10 +342,11 @@ class TestTypeMapping(unittest.TestCase):
                          Schema(['null', 'object'],
                                 format='spatial',
                                 inclusion='available'))
-        self.assertEqual(self.get_metadata_for_column('c_geometrycollection'),
-                         {'selected-by-default': True,
-                          'sql-datatype': 'geometrycollection',
-                          'datatype': 'geometrycollection'})
+        md = self.get_metadata_for_column('c_geometrycollection')
+        self.assertTrue(md['selected-by-default'])
+        # MySQL 8.0+ renamed 'geometrycollection' to 'geomcollection'
+        self.assertIn(md['sql-datatype'], ('geometrycollection', 'geomcollection'))
+        self.assertIn(md['datatype'], ('geometrycollection', 'geomcollection'))
 
 
 class TestSelectsAppropriateColumns(unittest.TestCase):
@@ -1250,8 +1263,8 @@ class TestJsonTables(unittest.TestCase):
 
         with connect_with_backoff(self.conn) as open_conn:
             with open_conn.cursor() as cursor:
-                cursor.execute('CREATE TABLE json_table (val json)')
-                cursor.execute('INSERT INTO json_table (val) VALUES ( \'{"a": 10, "b": "c"}\')')
+                cursor.execute('CREATE TABLE `json_table` (val json)')
+                cursor.execute('INSERT INTO `json_table` (val) VALUES ( \'{"a": 10, "b": "c"}\')')
 
         self.catalog = test_utils.discover_catalog(self.conn, {})
         for stream in self.catalog.streams:
